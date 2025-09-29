@@ -9,6 +9,13 @@ app.secret_key = os.environ.get("SECRET_KEY", "fallback_key")
 # ---------------------------
 # Helpers
 # ---------------------------
+from flask_socketio import SocketIO, emit
+socketio = SocketIO(app)
+
+@socketio.on('send_message')
+def handle_message(data):
+    emit('receive_message', data, broadcast=True)
+
 def init_db():
     conn = sqlite3.connect("chat.db")
     c = conn.cursor()
@@ -75,5 +82,6 @@ def ping():
 # ---------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
