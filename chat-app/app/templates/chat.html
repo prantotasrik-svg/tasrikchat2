@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Chat Room</title>
+    <style>
+      body {
+        font-family: Arial;
+        max-width: 600px;
+        margin: auto;
+      }
+      .chat-box {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 400px;
+        overflow-y: scroll;
+      }
+      .message {
+        padding: 5px 10px;
+        margin: 5px;
+        border-radius: 10px;
+        max-width: 70%;
+        display: inline-block;
+        clear: both;
+      }
+      .self {
+        background-color: #dcf8c6;
+        text-align: right;
+        float: right;
+      }
+      .other {
+        background-color: #f1f0f0;
+        text-align: left;
+        float: left;
+      }
+      form {
+        margin-top: 10px;
+        display: flex;
+      }
+      input[type="text"] {
+        flex: 1;
+        padding: 5px;
+      }
+      button {
+        padding: 5px 10px;
+      }
+      #change-name-btn {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Chat Room</h1>
+
+    <div class="chat-box" id="chat-box">
+      {% for msg in messages %}
+      <div
+        class="message {% if msg.user == current_user %}self{% else %}other{% endif %}"
+      >
+        {% if msg.user == current_user %} {{ msg.message }} :<strong
+          >{{ msg.user }}</strong
+        >
+        {% else %}
+        <strong>{{ msg.user }}</strong> :{{ msg.message }} {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+
+    <form id="chat-form">
+      <input
+        type="text"
+        id="message"
+        name="message"
+        placeholder="Type a message..."
+        required
+      />
+      <button type="submit">Send</button>
+    </form>
+
+    <button id="change-name-btn">Change Name</button>
+
+    <script>
+      const form = document.getElementById("chat-form");
+      const messageInput = document.getElementById("message");
+      const chatBox = document.getElementById("chat-box");
+      const currentUser = "{{ current_user }}";
+
+      // Initialize lastMessageIndex based on existing messages rendered by Flask
+      let lastMessageIndex = chatBox.children.length;
+
+      // Send new message
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        // Append locally
+        const div = document.createElement("div");
+        div.classList.add("message", "self");
+        div.innerHTML = `${message} :<strong>${currentUser}</strong>`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        messageInput.value = "";
+
+        // Send to server
+        fetch("/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message }),
+        }).then(() => {
+          lastMessageIndex++;
+        });
+      });
+
+      // Polling for new messages
+      setInterval(() => {
+        fetch("/messages")
+          .then((res) => res.json())
+          .then((msgs) => {
+            for (let i = lastMessageIndex; i < msgs.length; i++) {
+              const msg = msgs[i];
+              if (msg.user === currentUser) continue; // skip our own messages
+
+              const div = document.createElement("div");
+              div.classList.add("message", "other");
+              div.innerHTML = `<strong>${msg.user}</strong> :${msg.message}`;
+              chatBox.appendChild(div);
+              lastMessageIndex++;
+            }
+
+            // Scroll if near bottom
+            const atBottom =
+              chatBox.scrollHeight - chatBox.scrollTop <=
+              chatBox.clientHeight + 10;
+            if (atBottom) chatBox.scrollTop = chatBox.scrollHeight;
+          });
+      }, 500); // poll every 0.5s for smoother chat
+      setInterval(() => {
+        fetch("/ping");
+      }, 4 * 60 * 1000); // every 4 minutes
+
+      // Change name button
+      document
+        .getElementById("change-name-btn")
+        .addEventListener("click", () => {
+          const newName = prompt("Enter your new name:");
+          if (newName) {
+            fetch("/change_name", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username: newName }),
+            }).then(() => location.reload());
+          }
+        });
+    </script>
+  </body>
+</html>
