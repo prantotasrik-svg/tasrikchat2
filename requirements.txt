@@ -1,2 +1,4 @@
 Flask==2.3.2
+Flask-SocketIO
+eventlet
 gunicorn==21.2.0
