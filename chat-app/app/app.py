@@ -2,7 +2,10 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 import sqlite3
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key"
+import os
+
+app.secret_key = os.environ.get("SECRET_KEY", "fallback_key")
+"
 
 # ---------------------------
 # Helpers
@@ -73,3 +76,4 @@ def ping():
 # ---------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
